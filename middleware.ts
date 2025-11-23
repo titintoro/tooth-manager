@@ -1,6 +1,24 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { prisma } from '@/lib/prisma'
+
+// Función para verificar suscripción
+async function checkSubscription(clinicId: string): Promise<boolean> {
+  try {
+    const subscription = await prisma.clinicSubscription.findUnique({
+      where: { clinicId },
+    })
+
+    if (!subscription) return false
+
+    const activeStatuses = ['ACTIVE', 'TRIALING']
+    return activeStatuses.includes(subscription.status)
+  } catch (error) {
+    console.error('Error checking subscription:', error)
+    return false
+  }
+}
 
 // Rutas que requieren autenticación
 const protectedPaths = [
@@ -10,6 +28,17 @@ const protectedPaths = [
   '/staff',
   '/settings',
   '/waitlist',
+  '/agenda',
+  '/pacientes',
+  '/tratamientos',
+  '/configuracion',
+  '/lista-espera',
+]
+
+// Rutas que requieren suscripción activa
+const subscriptionRequiredPaths = [
+  '/agenda',
+  '/book',
 ]
 
 // Rutas públicas (no requieren autenticación)
@@ -17,7 +46,6 @@ const publicPaths = [
   '/login',
   '/register',
   '/forgot-password',
-  '/book', // Public booking widget
 ]
 
 // Rutas de API que requieren autenticación
@@ -62,6 +90,22 @@ export async function middleware(request: NextRequest) {
   // Verificar que el usuario tenga una clínica asignada para rutas protegidas
   if (isProtectedPath && token && !token.currentClinicId) {
     return NextResponse.redirect(new URL('/onboarding', request.url))
+  }
+
+  // Verificar suscripción para rutas que la requieren (excepto /billing)
+  const requiresSubscription = subscriptionRequiredPaths.some(path => pathname.startsWith(path))
+  if (requiresSubscription && token && token.currentClinicId && pathname !== '/billing') {
+    // Verificar suscripción en base de datos
+    const hasSubscription = await checkSubscription(token.currentClinicId as string)
+    
+    if (!hasSubscription) {
+      // Solo OWNER puede ir a /billing, otros roles ven mensaje
+      if (token.role === 'OWNER') {
+        return NextResponse.redirect(new URL('/billing', request.url))
+      } else {
+        return NextResponse.redirect(new URL('/dashboard?subscription_required=true', request.url))
+      }
+    }
   }
   
   // Para API routes, agregar headers con información de la sesión
