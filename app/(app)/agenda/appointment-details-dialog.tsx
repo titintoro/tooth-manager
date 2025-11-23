@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { WaitlistCandidatesDialog } from './waitlist-candidates-dialog'
 
 interface AppointmentDetailsDialogProps {
   appointmentId: string
@@ -51,11 +52,33 @@ export function AppointmentDetailsDialog({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false)
+  const [waitlistSlotData, setWaitlistSlotData] = useState<{
+    date: Date
+    start: string
+    duration: number
+    treatmentTypeId?: string
+    chairId?: string
+    staffMemberId?: string
+  } | null>(null)
 
   async function handleStatusChange(status: AppointmentStatus) {
     setLoading(true)
     try {
-      await updateAppointmentStatus(appointmentId, status)
+      const result = await updateAppointmentStatus(appointmentId, status)
+      
+      // Si se canceló la cita, mostrar candidatos de lista de espera
+      if (result.showWaitlistCandidates && result.waitlistSearchParams) {
+        const params = result.waitlistSearchParams
+        setWaitlistSlotData({
+          date: params.date,
+          start: params.date.toISOString(),
+          duration: params.duration,
+          treatmentTypeId: params.treatmentTypeId,
+        })
+        setWaitlistDialogOpen(true)
+      }
+      
       onOpenChange(false)
       router.refresh()
     } catch (error) {
@@ -195,6 +218,14 @@ export function AppointmentDetailsDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {waitlistSlotData && (
+        <WaitlistCandidatesDialog
+          open={waitlistDialogOpen}
+          onOpenChange={setWaitlistDialogOpen}
+          slotData={waitlistSlotData}
+        />
+      )}
     </>
   )
 }

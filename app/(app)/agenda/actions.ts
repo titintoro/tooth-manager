@@ -403,6 +403,13 @@ export async function updateAppointmentStatus(
 
   const existing = await prisma.appointment.findFirst({
     where: { id, clinicId },
+    include: {
+      treatmentType: {
+        select: {
+          id: true,
+        },
+      },
+    },
   })
 
   if (!existing) {
@@ -424,7 +431,17 @@ export async function updateAppointmentStatus(
   })
 
   revalidatePath('/agenda')
-  return appointment
+  
+  // Si se canceló, retornar info para buscar candidatos de lista de espera
+  return {
+    appointment,
+    showWaitlistCandidates: status === AppointmentStatus.CANCELLED,
+    waitlistSearchParams: status === AppointmentStatus.CANCELLED ? {
+      treatmentTypeId: existing.treatmentType?.id,
+      date: existing.start,
+      duration: Math.round((existing.end.getTime() - existing.start.getTime()) / 60000),
+    } : null,
+  }
 }
 
 // Eliminar cita
