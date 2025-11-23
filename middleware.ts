@@ -17,6 +17,7 @@ const publicPaths = [
   '/login',
   '/register',
   '/forgot-password',
+  '/book', // Public booking widget
 ]
 
 // Rutas de API que requieren autenticación

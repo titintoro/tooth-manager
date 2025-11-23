@@ -1,85 +1,47 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Clock, Bell } from 'lucide-react'
+import { getWaitlistEntries, getWaitlistStats } from './actions'
+import { WaitlistTable } from './waitlist-table'
+import { CreateWaitlistDialog } from './create-waitlist-dialog'
 
-export default function ListaEsperaPage() {
+export default async function ListaEsperaPage() {
+  const [entries, stats] = await Promise.all([
+    getWaitlistEntries({ status: 'WAITING' }),
+    getWaitlistStats(),
+  ])
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Lista de Espera</h2>
-          <p className="text-muted-foreground mt-2">
-            Gestiona pacientes en espera de citas
+          <h1 className="text-3xl font-bold">Lista de Espera</h1>
+          <p className="text-gray-600 mt-1">
+            Gestiona los pacientes que esperan disponibilidad para sus citas
           </p>
         </div>
-        <Button>
-          <Bell className="mr-2 h-4 w-4" />
-          Notificar disponibilidad
-        </Button>
+        <CreateWaitlistDialog />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              En espera
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              Pacientes activos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Notificados hoy
-            </CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              Sin notificaciones
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Convertidos
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0%</div>
-            <p className="text-xs text-muted-foreground">
-              Tasa de conversión
-            </p>
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">En Espera</p>
+          <p className="text-2xl font-bold text-blue-600">{stats.waiting}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Notificados</p>
+          <p className="text-2xl font-bold text-yellow-600">{stats.notified}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Agendados</p>
+          <p className="text-2xl font-bold text-green-600">{stats.scheduled}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Total</p>
+          <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pacientes en lista de espera</CardTitle>
-          <CardDescription>
-            Notifica automáticamente cuando haya disponibilidad
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-16 text-muted-foreground">
-            <Clock className="h-16 w-16 mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-medium mb-2">Lista de espera vacía</p>
-            <p className="text-sm">Los pacientes aparecerán aquí cuando soliciten estar en lista de espera</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Table */}
+      <WaitlistTable entries={entries} />
     </div>
   )
 }
