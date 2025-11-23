@@ -1,54 +1,27 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Users, Plus, Search } from 'lucide-react'
+import { getPatients } from './actions'
+import { PatientsTable } from './patients-table'
+import { CreatePatientDialog } from './create-patient-dialog'
 
-export default function PacientesPage() {
+interface PageProps {
+  searchParams: { q?: string }
+}
+
+export default async function PacientesPage({ searchParams }: PageProps) {
+  const patients = await getPatients(searchParams.q)
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Pacientes</h2>
-          <p className="text-muted-foreground mt-2">
-            Gestiona tu base de datos de pacientes
+          <h1 className="text-3xl font-bold">Pacientes</h1>
+          <p className="text-muted-foreground mt-1">
+            Gestiona la información de tus pacientes
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo paciente
-        </Button>
+        <CreatePatientDialog />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de pacientes</CardTitle>
-          <CardDescription>
-            Busca y gestiona información de tus pacientes
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, email o teléfono..."
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline">Filtros</Button>
-          </div>
-
-          <div className="text-center py-16 text-muted-foreground">
-            <Users className="h-16 w-16 mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-medium mb-2">No hay pacientes registrados</p>
-            <p className="text-sm">Comienza agregando tu primer paciente</p>
-            <Button className="mt-4" variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar paciente
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <PatientsTable patients={patients} />
     </div>
   )
 }
