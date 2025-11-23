@@ -1,0 +1,507 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTENTICACIÓN Y USUARIOS (Compatible con NextAuth + PrismaAdapter)
+// ============================================================================
+
+/// Usuario del sistema - Compatible con NextAuth
+/// Un usuario puede pertenecer a múltiples clínicas con diferentes roles
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Para credentials provider
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones NextAuth
+  accounts      Account[]
+  sessions      Session[]
+  
+  // Relaciones del dominio
+  clinicMemberships UserClinicMembership[]
+  staffMembers      StaffMember[]          // Si el usuario es también staff
+
+  @@map("users")
+}
+
+/// Cuentas OAuth (NextAuth) - Instagram, Google, etc.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+/// Sesiones activas (NextAuth)
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+/// Tokens de verificación (NextAuth)
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================================================
+// MULTI-TENANCY Y CLÍNICAS
+// ============================================================================
+
+/// Clínica dental - Tenant principal del sistema
+/// Cada clínica es independiente y tiene sus propios datos
+model Clinic {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique // Para URLs amigables
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  country     String?
+  timezone    String   @default("America/Mexico_City")
+  
+  // Configuración
+  businessHoursStart String? // Ej: "08:00"
+  businessHoursEnd   String? // Ej: "20:00"
+  slotDuration       Int     @default(30) // Duración de slots en minutos
+  
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  memberships      UserClinicMembership[]
+  staffMembers     StaffMember[]
+  treatmentTypes   TreatmentType[]
+  chairs           Chair[]
+  patients         Patient[]
+  appointments     Appointment[]
+  waitlistEntries  WaitlistEntry[]
+  notifications    NotificationLog[]
+  subscription     ClinicSubscription?
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("clinics")
+}
+
+/// Membresía de usuario en una clínica con rol específico
+/// Permite que un usuario pertenezca a múltiples clínicas
+model UserClinicMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  clinicId  String
+  role      UserRole @default(RECEPTIONIST)
+  
+  isActive  Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clinicId])
+  @@index([clinicId, role])
+  @@map("user_clinic_memberships")
+}
+
+/// Roles de usuario en una clínica
+enum UserRole {
+  OWNER          // Propietario - acceso total
+  ADMIN          // Administrador - gestión operativa
+  DOCTOR         // Doctor - ve su agenda y pacientes
+  RECEPTIONIST   // Recepcionista - gestión de agenda
+}
+
+// ============================================================================
+// PERSONAL Y PROFESIONALES
+// ============================================================================
+
+/// Miembro del staff (profesionales y personal)
+/// Puede o no estar ligado a un User del sistema
+model StaffMember {
+  id          String  @id @default(cuid())
+  clinicId    String
+  userId      String? // Opcional: si tiene acceso al sistema
+  
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  
+  // Tipo de profesional
+  profession  String? // "Dentista", "Ortodoncista", "Higienista", etc.
+  licenseNumber String?
+  
+  // Configuración de agenda
+  isActive    Boolean @default(true)
+  canBookAppointments Boolean @default(true)
+  color       String? // Para visualización en calendario
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  appointments Appointment[]
+
+  @@index([clinicId, isActive])
+  @@index([userId])
+  @@map("staff_members")
+}
+
+// ============================================================================
+// TRATAMIENTOS Y RECURSOS
+// ============================================================================
+
+/// Tipo de tratamiento/servicio ofrecido por la clínica
+model TreatmentType {
+  id              String  @id @default(cuid())
+  clinicId        String
+  
+  name            String
+  description     String?
+  code            String? // Código interno para facturación
+  
+  // Duración y precio estimado
+  defaultDuration Int     @default(30) // Minutos
+  estimatedPrice  Decimal? @db.Decimal(10, 2)
+  currency        String  @default("MXN")
+  
+  color           String? // Para visualización en calendario
+  isActive        Boolean @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  waitlistEntries WaitlistEntry[]
+
+  @@index([clinicId, isActive])
+  @@map("treatment_types")
+}
+
+/// Sillón/Box/Consultorio de la clínica
+model Chair {
+  id          String  @id @default(cuid())
+  clinicId    String
+  
+  name        String  // "Sillón 1", "Box A", etc.
+  location    String? // "Planta baja", "Segundo piso", etc.
+  
+  isActive    Boolean @default(true)
+  displayOrder Int    @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([clinicId, isActive])
+  @@map("chairs")
+}
+
+// ============================================================================
+// PACIENTES
+// ============================================================================
+
+/// Paciente - Solo información administrativa, sin historia clínica
+model Patient {
+  id          String   @id @default(cuid())
+  clinicId    String
+  
+  // Datos personales
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  dateOfBirth DateTime?
+  
+  // Datos adicionales
+  address     String?
+  city        String?
+  notes       String?  @db.Text // Notas administrativas (no clínicas)
+  
+  // Estado
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic          Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  waitlistEntries WaitlistEntry[]
+
+  @@index([clinicId, isActive])
+  @@index([clinicId, email])
+  @@index([clinicId, phone])
+  @@map("patients")
+}
+
+// ============================================================================
+// AGENDA Y CITAS
+// ============================================================================
+
+/// Cita/Appointment
+model Appointment {
+  id              String            @id @default(cuid())
+  clinicId        String
+  patientId       String
+  treatmentTypeId String?
+  staffMemberId   String?           // Profesional asignado
+  chairId         String?           // Sillón/box asignado
+  
+  // Fecha y hora
+  start           DateTime
+  end             DateTime
+  
+  // Estado de la cita
+  status          AppointmentStatus @default(SCHEDULED)
+  
+  // Información adicional
+  notes           String?           @db.Text
+  privateNotes    String?           @db.Text // Solo visible para staff
+  
+  // Recordatorios enviados
+  reminderSentAt  DateTime?
+  
+  // Auditoría
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  cancelledAt     DateTime?
+  cancelReason    String?
+
+  clinic        Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  treatmentType TreatmentType? @relation(fields: [treatmentTypeId], references: [id], onDelete: SetNull)
+  staffMember   StaffMember?   @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
+  chair         Chair?         @relation(fields: [chairId], references: [id], onDelete: SetNull)
+
+  @@index([clinicId, start, end])
+  @@index([clinicId, status, start])
+  @@index([patientId, start])
+  @@index([staffMemberId, start])
+  @@map("appointments")
+}
+
+/// Estados de una cita
+enum AppointmentStatus {
+  SCHEDULED  // Programada
+  CONFIRMED  // Confirmada por el paciente
+  COMPLETED  // Completada
+  CANCELLED  // Cancelada
+  NO_SHOW    // Paciente no se presentó
+}
+
+// ============================================================================
+// LISTA DE ESPERA
+// ============================================================================
+
+/// Entrada en lista de espera
+/// Para pacientes que quieren adelantar cita o están esperando disponibilidad
+model WaitlistEntry {
+  id              String    @id @default(cuid())
+  clinicId        String
+  patientId       String
+  treatmentTypeId String?
+  
+  // Preferencias
+  preferredTimeSlot String? // "MORNING", "AFTERNOON", "EVENING", o rango específico
+  preferredDays     String? // JSON con días preferidos: ["MONDAY", "WEDNESDAY"]
+  urgency          WaitlistUrgency @default(NORMAL)
+  
+  // Notas
+  notes           String?   @db.Text
+  
+  // Estado
+  status          WaitlistStatus @default(WAITING)
+  notifiedAt      DateTime?
+  resolvedAt      DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  clinic        Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  treatmentType TreatmentType? @relation(fields: [treatmentTypeId], references: [id], onDelete: SetNull)
+
+  @@index([clinicId, status, createdAt])
+  @@index([patientId, status])
+  @@map("waitlist_entries")
+}
+
+enum WaitlistUrgency {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum WaitlistStatus {
+  WAITING    // En espera
+  NOTIFIED   // Notificado de disponibilidad
+  SCHEDULED  // Ya se le asignó cita
+  CANCELLED  // Cancelado por el paciente
+  EXPIRED    // Expiró la solicitud
+}
+
+// ============================================================================
+// NOTIFICACIONES Y COMUNICACIONES
+// ============================================================================
+
+/// Log de notificaciones enviadas
+/// Registro simple de comunicaciones (SMS, email, WhatsApp)
+model NotificationLog {
+  id          String             @id @default(cuid())
+  clinicId    String
+  
+  // Destinatario
+  recipientEmail String?
+  recipientPhone String?
+  recipientName  String?
+  
+  // Tipo y contenido
+  type        NotificationType
+  channel     NotificationChannel
+  subject     String?
+  content     String            @db.Text
+  
+  // Estado
+  status      NotificationStatus @default(PENDING)
+  sentAt      DateTime?
+  failedAt    DateTime?
+  errorMessage String?
+  
+  // Metadata
+  metadata    String?           @db.Text // JSON con info adicional
+  
+  createdAt   DateTime          @default(now())
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, createdAt])
+  @@index([clinicId, status])
+  @@map("notification_logs")
+}
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_CANCELLED
+  WAITLIST_NOTIFICATION
+  GENERAL
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+// ============================================================================
+// SUSCRIPCIONES Y PAGOS (STRIPE)
+// ============================================================================
+
+/// Suscripción de la clínica
+/// Conectada con Stripe para gestión de pagos
+model ClinicSubscription {
+  id         String   @id @default(cuid())
+  clinicId   String   @unique
+  
+  // IDs de Stripe
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId        String?
+  
+  // Plan y estado
+  plan                 SubscriptionPlan   @default(TRIAL)
+  status               SubscriptionStatus @default(TRIALING)
+  
+  // Fechas importantes
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  trialEndsAt          DateTime?
+  cancelAt             DateTime?
+  canceledAt           DateTime?
+  
+  // Límites del plan
+  maxStaffMembers      Int?
+  maxAppointmentsMonth Int?
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@index([status])
+  @@map("clinic_subscriptions")
+}
+
+enum SubscriptionPlan {
+  TRIAL      // Período de prueba
+  BASIC      // Plan básico
+  STANDARD   // Plan estándar
+  PREMIUM    // Plan premium
+  ENTERPRISE // Plan empresarial
+}
+
+enum SubscriptionStatus {
+  TRIALING       // En período de prueba
+  ACTIVE         // Activa y al día
+  PAST_DUE       // Pago atrasado
+  CANCELED       // Cancelada
+  UNPAID         // Sin pagar
+  INCOMPLETE     // Incompleta
+  INCOMPLETE_EXPIRED // Expiró antes de completarse
+}
