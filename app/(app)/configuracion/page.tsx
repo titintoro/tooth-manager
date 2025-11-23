@@ -1,8 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { Building2, Users as UsersIcon, Bell, CreditCard } from 'lucide-react'
+import { Building2, Users as UsersIcon, Bell, CreditCard, Armchair, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 export default function ConfiguracionPage() {
   return (
@@ -14,151 +14,123 @@ export default function ConfiguracionPage() {
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Información de la clínica */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
+        <Link href="/configuracion/clinica">
+          <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Building2 className="h-8 w-8 text-primary" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </div>
               <CardTitle>Información de la clínica</CardTitle>
-            </div>
-            <CardDescription>
-              Datos básicos y configuración general
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label htmlFor="clinic-name" className="block text-sm font-medium mb-2">
-                Nombre de la clínica
-              </label>
-              <Input id="clinic-name" placeholder="Mi Clínica Dental" />
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium mb-2">
-                  Teléfono
-                </label>
-                <Input id="phone" placeholder="+34 900 000 000" />
-              </div>
-              
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-2">
-                  Email
-                </label>
-                <Input id="email" type="email" placeholder="info@clinica.com" />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium mb-2">
-                Dirección
-              </label>
-              <Input id="address" placeholder="Calle Principal 123" />
-            </div>
-            
-            <Button>Guardar cambios</Button>
-          </CardContent>
-        </Card>
+              <CardDescription>
+                Datos básicos y configuración general
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
 
-        {/* Miembros del equipo */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <UsersIcon className="h-5 w-5" />
-              <CardTitle>Miembros del equipo</CardTitle>
-            </div>
-            <CardDescription>
-              Gestiona los usuarios con acceso a la clínica
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+        {/* Personal */}
+        <Link href="/configuracion/staff">
+          <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">demo@toothmanager.com</p>
-                  <p className="text-sm text-muted-foreground">Propietario</p>
-                </div>
-                <Button variant="outline" size="sm">Gestionar</Button>
+                <UsersIcon className="h-8 w-8 text-primary" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
-              
-              <Separator />
-              
-              <Button variant="outline" className="w-full">
-                Invitar miembro
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <CardTitle>Personal</CardTitle>
+              <CardDescription>
+                Gestiona los miembros del equipo
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
 
-        {/* Notificaciones */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              <CardTitle>Notificaciones</CardTitle>
-            </div>
-            <CardDescription>
-              Configura cómo y cuándo recibir notificaciones
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+        {/* Sillones */}
+        <Link href="/configuracion/sillones">
+          <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Recordatorios de citas</p>
-                  <p className="text-sm text-muted-foreground">
-                    Recibe notificaciones antes de cada cita
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">Configurar</Button>
+                <Armchair className="h-8 w-8 text-primary" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
-              
-              <Separator />
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Lista de espera</p>
-                  <p className="text-sm text-muted-foreground">
-                    Notificaciones de disponibilidad
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">Configurar</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <CardTitle>Sillones</CardTitle>
+              <CardDescription>
+                Gestiona los sillones dentales
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+      </div>
 
-        {/* Suscripción */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              <CardTitle>Suscripción y facturación</CardTitle>
-            </div>
-            <CardDescription>
-              Gestiona tu plan y método de pago
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold">Plan Prueba</p>
-                  <span className="text-sm text-muted-foreground">Gratis</span>
-                </div>
+      {/* Notificaciones */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            <CardTitle>Notificaciones</CardTitle>
+          </div>
+          <CardDescription>
+            Configura cómo y cuándo recibir notificaciones
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Recordatorios de citas</p>
                 <p className="text-sm text-muted-foreground">
-                  30 días restantes de prueba gratuita
+                  Recibe notificaciones antes de cada cita
                 </p>
               </div>
-              
-              <Button variant="outline" className="w-full">
-                Ver planes y precios
-              </Button>
+              <Button variant="outline" size="sm">Configurar</Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            
+            <Separator />
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Lista de espera</p>
+                <p className="text-sm text-muted-foreground">
+                  Notificaciones de disponibilidad
+                </p>
+              </div>
+              <Button variant="outline" size="sm">Configurar</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Suscripción */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            <CardTitle>Suscripción y facturación</CardTitle>
+          </div>
+          <CardDescription>
+            Gestiona tu plan y método de pago
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-semibold">Plan Prueba</p>
+                <span className="text-sm text-muted-foreground">Gratis</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                30 días restantes de prueba gratuita
+              </p>
+            </div>
+            
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/precios">Ver planes y precios</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
